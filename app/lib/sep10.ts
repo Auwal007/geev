@@ -7,7 +7,7 @@
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
  */
 
-import {
+import { 
   Keypair,
   Transaction,
   TransactionBuilder,
