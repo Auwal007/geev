@@ -28,8 +28,14 @@ const mockPrisma = vi.hoisted(() => {
       findUnique: vi.fn(),
     },
     user: {
-      update: vi.fn(),
+      update: vi.fn().mockResolvedValue({ xp: 100, rankId: "newcomer" }),
       findUnique: vi.fn(),
+    },
+    analyticsEvent: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+    rank: {
+      findFirst: vi.fn().mockResolvedValue({ id: "newcomer" }),
     },
   };
 
@@ -59,7 +65,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/notifications", () => ({
-  createNotification: vi.fn(),
+  createNotification: vi.fn().mockResolvedValue({}),
 }));
 
 import { getCurrentUser } from "@/lib/auth";
