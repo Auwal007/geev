@@ -66,7 +66,7 @@ function createRequest(method = "GET") {
 }
 
 describe("Interactions API (Unit)", () => {
-  const mockUser = { id: "user-1" };
+  const mockUser = { id: "user-1", name: "Test User" };
   const postId = "post-1";
   const params = Promise.resolve({ id: postId });
 

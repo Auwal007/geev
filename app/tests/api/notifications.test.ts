@@ -3,7 +3,14 @@ import { GET, POST, PATCH, DELETE } from "@/app/api/notifications/route";
 import { createMockRequest, parseResponse } from "../helpers/api";
 import * as notifications from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import * as auth from "@/lib/auth";
+
+// Mock auth module before importing routes
+const mockAuth = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/auth", () => ({
+  auth: mockAuth,
+  getCurrentUser: vi.fn(),
+}));
 
 describe("Notifications API", () => {
   beforeEach(() => {
@@ -12,7 +19,7 @@ describe("Notifications API", () => {
 
   describe("GET /api/notifications", () => {
     it("should return 401 if not authenticated", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
+      mockAuth.mockResolvedValue(null);
 
       const request = createMockRequest(
         "http://localhost:3000/api/notifications",
@@ -23,9 +30,7 @@ describe("Notifications API", () => {
     });
 
     it("should return notifications for authenticated user", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       const mockNotifications = [
         {
@@ -54,9 +59,7 @@ describe("Notifications API", () => {
     });
 
     it("should filter by isRead parameter", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       prisma.notification.findMany = vi.fn().mockResolvedValue([]);
       prisma.notification.count = vi.fn().mockResolvedValue(0);
@@ -79,7 +82,7 @@ describe("Notifications API", () => {
 
   describe("POST /api/notifications/read-all", () => {
     it("should return 401 if not authenticated", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
+      mockAuth.mockResolvedValue(null);
 
       const request = createMockRequest(
         "http://localhost:3000/api/notifications",
@@ -93,9 +96,7 @@ describe("Notifications API", () => {
     });
 
     it("should mark all notifications as read", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       vi.spyOn(notifications, "markAllAsRead").mockResolvedValue(5);
 
@@ -116,7 +117,7 @@ describe("Notifications API", () => {
 
   describe("PATCH /api/notifications/read", () => {
     it("should return 401 if not authenticated", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
+      mockAuth.mockResolvedValue(null);
 
       const request = createMockRequest(
         "http://localhost:3000/api/notifications",
@@ -131,9 +132,7 @@ describe("Notifications API", () => {
     });
 
     it("should return 400 if notificationIds not provided", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       const request = createMockRequest(
         "http://localhost:3000/api/notifications",
@@ -150,9 +149,7 @@ describe("Notifications API", () => {
     });
 
     it("should mark specific notifications as read", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       vi.spyOn(notifications, "markAsRead").mockResolvedValue(2);
 
@@ -174,7 +171,7 @@ describe("Notifications API", () => {
 
   describe("DELETE /api/notifications/unread-count", () => {
     it("should return 401 if not authenticated", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
+      mockAuth.mockResolvedValue(null);
 
       const request = createMockRequest(
         "http://localhost:3000/api/notifications",
@@ -188,9 +185,7 @@ describe("Notifications API", () => {
     });
 
     it("should return unread count", async () => {
-      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
-        id: "user_1",
-      } as any);
+      mockAuth.mockResolvedValue({ user: { id: "user_1" } });
 
       vi.spyOn(notifications, "getUnreadCount").mockResolvedValue(7);
 
