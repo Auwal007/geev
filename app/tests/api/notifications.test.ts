@@ -1,37 +1,50 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET, POST, PATCH, DELETE } from '@/app/api/notifications/route';
-import { createMockRequest, parseResponse } from '../helpers/api';
-import * as notifications from '@/lib/notifications';
-import { prisma } from '@/lib/prisma';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GET, POST, PATCH, DELETE } from "@/app/api/notifications/route";
+import { createMockRequest, parseResponse } from "../helpers/api";
+import * as notifications from "@/lib/notifications";
+import { prisma } from "@/lib/prisma";
+import * as auth from "@/lib/auth";
 
-describe('Notifications API', () => {
+describe("Notifications API", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('GET /api/notifications', () => {
-    it('should return 401 if not authenticated', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue(null);
+  describe("GET /api/notifications", () => {
+    it("should return 401 if not authenticated", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications');
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(401);
     });
 
-    it('should return notifications for authenticated user', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should return notifications for authenticated user", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
       const mockNotifications = [
-        { id: 'notif_1', userId: 'user_1', type: 'giveaway_entry', message: 'Test', isRead: false },
+        {
+          id: "notif_1",
+          userId: "user_1",
+          type: "giveaway_entry",
+          message: "Test",
+          isRead: false,
+        },
       ];
 
-      prisma.notification.findMany = vi.fn().mockResolvedValue(mockNotifications);
+      prisma.notification.findMany = vi
+        .fn()
+        .mockResolvedValue(mockNotifications);
       prisma.notification.count = vi.fn().mockResolvedValue(1);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications');
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+      );
       const response = await GET(request);
       const { status, data } = await parseResponse(response);
 
@@ -40,23 +53,23 @@ describe('Notifications API', () => {
       expect(data.total).toBe(1);
     });
 
-    it('should filter by isRead parameter', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should filter by isRead parameter", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
       prisma.notification.findMany = vi.fn().mockResolvedValue([]);
       prisma.notification.count = vi.fn().mockResolvedValue(0);
 
       const request = createMockRequest(
-        'http://localhost:3000/api/notifications?isRead=false',
+        "http://localhost:3000/api/notifications?isRead=false",
       );
       await GET(request);
 
       expect(prisma.notification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            userId: 'user_1',
+            userId: "user_1",
             isRead: false,
           }),
         }),
@@ -64,28 +77,34 @@ describe('Notifications API', () => {
     });
   });
 
-  describe('POST /api/notifications/read-all', () => {
-    it('should return 401 if not authenticated', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue(null);
+  describe("POST /api/notifications/read-all", () => {
+    it("should return 401 if not authenticated", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'POST',
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "POST",
+        },
+      );
       const response = await POST(request);
 
       expect(response.status).toBe(401);
     });
 
-    it('should mark all notifications as read', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should mark all notifications as read", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
-      vi.spyOn(notifications, 'markAllAsRead').mockResolvedValue(5);
+      vi.spyOn(notifications, "markAllAsRead").mockResolvedValue(5);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'POST',
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "POST",
+        },
+      );
       const response = await POST(request);
       const { status, data } = await parseResponse(response);
 
@@ -95,46 +114,55 @@ describe('Notifications API', () => {
     });
   });
 
-  describe('PATCH /api/notifications/read', () => {
-    it('should return 401 if not authenticated', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue(null);
+  describe("PATCH /api/notifications/read", () => {
+    it("should return 401 if not authenticated", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'PATCH',
-        body: { notificationIds: ['notif_1'] },
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "PATCH",
+          body: { notificationIds: ["notif_1"] },
+        },
+      );
       const response = await PATCH(request);
 
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 if notificationIds not provided', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should return 400 if notificationIds not provided", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'PATCH',
-        body: {},
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "PATCH",
+          body: {},
+        },
+      );
       const response = await PATCH(request);
       const { status, data } = await parseResponse(response);
 
       expect(status).toBe(400);
-      expect(data.error).toBe('notificationIds array is required');
+      expect(data.error).toBe("notificationIds array is required");
     });
 
-    it('should mark specific notifications as read', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should mark specific notifications as read", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
-      vi.spyOn(notifications, 'markAsRead').mockResolvedValue(2);
+      vi.spyOn(notifications, "markAsRead").mockResolvedValue(2);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'PATCH',
-        body: { notificationIds: ['notif_1', 'notif_2'] },
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "PATCH",
+          body: { notificationIds: ["notif_1", "notif_2"] },
+        },
+      );
       const response = await PATCH(request);
       const { status, data } = await parseResponse(response);
 
@@ -144,28 +172,34 @@ describe('Notifications API', () => {
     });
   });
 
-  describe('DELETE /api/notifications/unread-count', () => {
-    it('should return 401 if not authenticated', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue(null);
+  describe("DELETE /api/notifications/unread-count", () => {
+    it("should return 401 if not authenticated", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue(null as any);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'DELETE',
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "DELETE",
+        },
+      );
       const response = await DELETE(request);
 
       expect(response.status).toBe(401);
     });
 
-    it('should return unread count', async () => {
-      vi.spyOn(await import('next-auth'), 'getServerSession').mockResolvedValue({
-        user: { id: 'user_1' },
-      });
+    it("should return unread count", async () => {
+      vi.spyOn(auth, "getCurrentUser").mockResolvedValue({
+        id: "user_1",
+      } as any);
 
-      vi.spyOn(notifications, 'getUnreadCount').mockResolvedValue(7);
+      vi.spyOn(notifications, "getUnreadCount").mockResolvedValue(7);
 
-      const request = createMockRequest('http://localhost:3000/api/notifications', {
-        method: 'DELETE',
-      });
+      const request = createMockRequest(
+        "http://localhost:3000/api/notifications",
+        {
+          method: "DELETE",
+        },
+      );
       const response = await DELETE(request);
       const { status, data } = await parseResponse(response);
 
