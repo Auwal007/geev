@@ -527,6 +527,8 @@ model WalletTransaction {
   method    String?           @db.VarChar(50)
   reference String?           @db.VarChar(255)
   note      String?
+  txHash         String?
+  stellarAddress String?
   createdAt DateTime          @default(now()) @map("created_at")
   updatedAt DateTime          @updatedAt @map("updated_at")
 
