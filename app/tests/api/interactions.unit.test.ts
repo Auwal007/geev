@@ -27,6 +27,10 @@ const mockPrisma = vi.hoisted(() => {
     post: {
       findUnique: vi.fn(),
     },
+    user: {
+      update: vi.fn(),
+      findUnique: vi.fn(),
+    },
   };
 
   prisma.$transaction.mockImplementation(async (callback: any) =>
@@ -100,6 +104,11 @@ describe("Interactions API (Unit)", () => {
       const request = createRequest("POST");
       const response = await likePost(request as any, { params });
       const data = await response.json();
+
+      // Debug: log the response if it's not 200
+      if (response.status !== 200) {
+        console.log("Error response:", data);
+      }
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
