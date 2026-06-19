@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import type {
   AppContextType,
@@ -22,6 +22,7 @@ import { signIn, signOut } from 'next-auth/react';
 
 import type React from 'react';
 import { useSession } from 'next-auth/react';
+import { useTheme } from 'next-themes';
 
 const initialState: AppState = {
   likes: new Set<string>(),
@@ -54,6 +55,7 @@ type AppAction =
   | { type: 'ADD_CONTRIBUTION'; payload: HelpContribution }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'TOGGLE_THEME' }
+  | { type: 'SET_THEME'; payload: 'light' | 'dark' }
   | { type: 'SET_CREATE_MODAL'; payload: boolean }
   | { type: 'SET_GIVEAWAY_MODAL'; payload: boolean }
   | { type: 'SET_REQUEST_MODAL'; payload: boolean }
@@ -103,6 +105,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, isLoading: action.payload };
     case 'TOGGLE_THEME':
       return { ...state, theme: state.theme === 'light' ? 'dark' : 'light' };
+    case 'SET_THEME':
+      return { ...state, theme: action.payload };
     case 'SET_CREATE_MODAL':
       return { ...state, showCreateModal: action.payload };
     case 'SET_GIVEAWAY_MODAL':
@@ -120,7 +124,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isHydrated, setIsHydrated] = useState(false);
   const { data: session } = useSession();
-
+  const { theme: nextTheme, resolvedTheme, setTheme } = useTheme();
+  
+  // Combine next-themes state to guarantee a synchronous true theme value
+  const currentTheme = (resolvedTheme || nextTheme || 'light') as 'light' | 'dark';
   useEffect(() => {
     let isMounted = true;
 
@@ -155,6 +162,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      dispatch({
+        type: 'SET_THEME',
+        payload: savedTheme,
+      });
+    }
+  }, []);
 
   // Load state from localStorage and mock data on mount
   useEffect(() => {
@@ -200,7 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const postData = await postRes.json();
         const rawList = Array.isArray(postData.data)
           ? postData.data
-          : postData.data?.posts ?? [];
+          : (postData.data?.posts ?? []);
         const mapped = rawList
           .map((p: Record<string, unknown>) => mapApiPostToClientPost(p))
           .filter(Boolean) as Post[];
@@ -216,26 +233,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadPosts();
   }, []);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      dispatch({ type: 'TOGGLE_THEME' });
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('theme', state.theme);
-    document.documentElement.classList.toggle('dark', state.theme === 'dark');
-  }, [state.theme]);
-
   const contextValue: AppContextType = {
     ...state,
+    theme: currentTheme,
     refreshPosts: async () => {
       try {
         const res = await fetch('/api/posts', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        const rawList = Array.isArray(data.data) ? data.data : data.data?.posts ?? [];
+        const rawList = Array.isArray(data.data)
+          ? data.data
+          : (data.data?.posts ?? []);
         const mapped = rawList
           .map((p: Record<string, unknown>) => mapApiPostToClientPost(p))
           .filter(Boolean) as Post[];
@@ -257,7 +265,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? mapApiPostToClientPost(raw as Record<string, unknown>)
           : null;
         if (post) {
-          dispatch({ type: 'UPDATE_POST', payload: { id: postId, updates: post } });
+          dispatch({
+            type: 'UPDATE_POST',
+            payload: { id: postId, updates: post },
+          });
         }
       } catch {
         // silently ignore refresh failures
@@ -341,7 +352,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'ADD_CONTRIBUTION', payload: newContribution });
     },
     toggleTheme: () => {
-      dispatch({ type: 'TOGGLE_THEME' });
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      document.cookie = `theme=${newTheme}; path=/; max-age=31536000`;
+      dispatch({ type: 'SET_THEME', payload: newTheme });
     },
     setShowCreateModal: (show: boolean) => {
       dispatch({ type: 'SET_CREATE_MODAL', payload: show });
