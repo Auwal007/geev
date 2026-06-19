@@ -116,7 +116,6 @@ export function generateChallenge(
     fee: BASE_FEE,
     networkPassphrase: getNetworkPassphrase(),
   })
-    .setTimeout(CHALLENGE_EXPIRATION_SECONDS)
     .addOperation(
       Operation.manageData({
         name: `${homeDomain} auth`,
