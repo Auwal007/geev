@@ -12,10 +12,10 @@ import {
   Transaction,
   TransactionBuilder,
   Operation,
-  Networks,
   BASE_FEE,
   Account,
 } from "@stellar/stellar-sdk";
+import { getNetworkPassphrase } from "@/lib/stellar";
 
 // Lazy-loaded server keypair to avoid errors during module initialization in tests
 let _serverKeypair: Keypair | null = null;
@@ -114,7 +114,7 @@ export function generateChallenge(
 
   const transaction = new TransactionBuilder(serverAccount, {
     fee: BASE_FEE,
-    networkPassphrase: Networks.PUBLIC,
+    networkPassphrase: getNetworkPassphrase(),
   })
     .setTimeout(CHALLENGE_EXPIRATION_SECONDS)
     .addOperation(
@@ -165,7 +165,7 @@ export function verifyChallenge(
     // Decode the transaction
     const transaction = TransactionBuilder.fromXDR(
       signedXDR,
-      Networks.PUBLIC,
+      getNetworkPassphrase(),
     ) as Transaction;
 
     const serverKeypair = getServerKeypair();
@@ -286,7 +286,7 @@ export function extractClientPublicKey(signedXDR: string): string | null {
   try {
     const transaction = TransactionBuilder.fromXDR(
       signedXDR,
-      Networks.PUBLIC,
+      getNetworkPassphrase(),
     ) as Transaction;
 
     const firstOp = transaction.operations[0];
