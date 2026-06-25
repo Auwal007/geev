@@ -4,7 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody } from "@/lib/parse-json-body";
-import { submitStellarWithdrawal } from "@/lib/stellar";
+import { submitStellarWithdrawal, convertUSDtoXLM } from "@/lib/stellar";
 
 const withdrawSchema = z.object({
   amount: z.number().positive("Amount must be greater than 0"),
@@ -51,13 +51,28 @@ export async function POST(request: NextRequest) {
       if (user.walletBalance < amount)
         return apiError("Insufficient wallet balance", 400);
 
+      // Convert USD to XLM for on-chain submission
+      let xlmAmount = amount;
+      if (asset === "XLM") {
+        try {
+          xlmAmount = await convertUSDtoXLM(amount);
+        } catch (err) {
+          return apiError(
+            "Failed to get exchange rate for conversion",
+            502,
+          );
+        }
+      }
+
       // Create a pending record before submitting (idempotency anchor)
       const pendingTx = await prisma.walletTransaction.create({
         data: {
           userId: currentUser.id,
           type: "withdraw",
           amount,
-          currency: asset,
+          convertedAmount: xlmAmount,
+          currency: "USD",
+          convertedCurrency: asset,
           status: "pending",
           method,
           note: note ?? null,
@@ -70,7 +85,7 @@ export async function POST(request: NextRequest) {
         txHash = await submitStellarWithdrawal({
           sourceAddress: user.walletAddress,
           destinationAddress,
-          amount,
+          amount: xlmAmount,
           asset,
         });
       } catch (err) {
@@ -105,6 +120,13 @@ export async function POST(request: NextRequest) {
           lastSync: updatedUser.updatedAt.toISOString(),
           simulated: false,
           txHash,
+          conversionInfo: {
+            originalAmount: amount,
+            originalCurrency: "USD",
+            convertedAmount: xlmAmount,
+            convertedCurrency: asset,
+            rate: (xlmAmount / amount).toFixed(7),
+          },
         },
         "Withdrawal completed successfully",
       );
@@ -119,12 +141,24 @@ export async function POST(request: NextRequest) {
       if (!user) throw new Error("USER_NOT_FOUND");
       if (user.walletBalance < amount) throw new Error("INSUFFICIENT_BALANCE");
 
+      // For simulated withdrawals, still calculate what XLM amount would be
+      // This helps with testing and audit trail
+      let xlmAmount = amount;
+      try {
+        xlmAmount = await convertUSDtoXLM(amount);
+      } catch {
+        // If conversion fails, fallback to 1:1 (for testing)
+        xlmAmount = amount;
+      }
+
       const transaction = await tx.walletTransaction.create({
         data: {
           userId: currentUser.id,
           type: "withdraw",
           amount,
+          convertedAmount: xlmAmount,
           currency: "USD",
+          convertedCurrency: "XLM",
           status: "pending",
           method,
           note: note ?? null,
@@ -150,6 +184,13 @@ export async function POST(request: NextRequest) {
         transaction: result.transaction,
         lastSync: result.updatedAt.toISOString(),
         simulated,
+        conversionInfo: {
+          originalAmount: amount,
+          originalCurrency: "USD",
+          convertedAmount: result.transaction.convertedAmount,
+          convertedCurrency: "XLM",
+          rate: (result.transaction.convertedAmount / amount).toFixed(7),
+        },
       },
       "Withdrawal initiated successfully",
     );
